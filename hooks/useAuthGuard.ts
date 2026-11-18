@@ -1,20 +1,22 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { isAuthenticated } from "@/lib/auth";
+import { getUserRole, isAuthenticated } from "@/lib/auth";
 import { CONFIG } from "@/lib/config";
 
 interface AuthGuardOptions {
   requireAuth?: boolean;
+  allowedRoles?: string[];
 }
 
 export function useAuthGuard({
   requireAuth = true,
+  allowedRoles,
 }: AuthGuardOptions = {}) {
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
+  const allowedRolesKey = allowedRoles?.join("|") ?? "";
 
   useEffect(() => {
     let isMounted = true;
@@ -22,6 +24,7 @@ export function useAuthGuard({
     const checkAuth = () => {
       try {
         const userIsAuth = isAuthenticated();
+        const role = getUserRole();
 
         if (requireAuth && !userIsAuth) {
           router.replace(CONFIG.ROUTES.LOGIN);
@@ -29,7 +32,14 @@ export function useAuthGuard({
         }
 
         if (!requireAuth && userIsAuth) {
-          router.replace(CONFIG.ROUTES.DASHBOARD);
+          router.replace(role === "admin" ? "/admin" : CONFIG.ROUTES.DASHBOARD);
+          return;
+        }
+
+        const roles = allowedRolesKey ? allowedRolesKey.split("|") : [];
+
+        if (requireAuth && roles.length > 0 && !roles.includes(role || "")) {
+          router.replace(role === "admin" ? "/admin" : CONFIG.ROUTES.DASHBOARD);
           return;
         }
 
@@ -50,7 +60,7 @@ export function useAuthGuard({
     return () => {
       isMounted = false;
     };
-  }, [requireAuth, router]);
+  }, [requireAuth, allowedRolesKey, router]);
 
   return { isChecking };
 }

@@ -14,7 +14,7 @@ import {
 
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { apiClient } from "@/lib/api";
-import { setTokens } from "@/lib/auth";
+import { getUserRole, setTokens } from "@/lib/auth";
 import { CONFIG } from "@/lib/config";
 
 import { Button } from "@/components/ui/button";
@@ -67,10 +67,20 @@ export default function LoginPage() {
       }
 
       setTokens(data.accessToken, data.refreshToken);
-      setProgress(100);
+setProgress(100);
 
-      await new Promise((resolve) => setTimeout(resolve, 350));
-      router.push(CONFIG.ROUTES.DASHBOARD);
+await new Promise((resolve) => setTimeout(resolve, 350));
+
+const role = getUserRole();
+
+if (role === "admin") {
+  router.push("/admin");
+} else if (role === "user") {
+  router.push(CONFIG.ROUTES.DASHBOARD);
+} else {
+  setError("Invalid account role. Please contact the administrator.");
+  return;
+}
 
     } catch (err: any) {
       setError("Incorrect username or password.");

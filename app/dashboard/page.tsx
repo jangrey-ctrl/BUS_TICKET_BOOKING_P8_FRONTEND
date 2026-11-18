@@ -29,7 +29,10 @@ import {
 } from "lucide-react";
 
 export default function DashboardPage() {
-  const { isChecking } = useAuthGuard({ requireAuth: true });
+const { isChecking } = useAuthGuard({
+  requireAuth: true,
+  allowedRoles: ["user"],
+});
   const [showNotifications, setShowNotifications] = useState(false);
 
   if (isChecking) {
