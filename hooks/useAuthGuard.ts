@@ -1,8 +1,9 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { getUserRole, isAuthenticated } from "@/lib/auth";
+import { usePathname, useRouter } from "next/navigation";
+import { clearTokens, getUserRole } from "@/lib/auth";
 import { CONFIG } from "@/lib/config";
 
 interface AuthGuardOptions {
@@ -15,52 +16,46 @@ export function useAuthGuard({
   allowedRoles,
 }: AuthGuardOptions = {}) {
   const router = useRouter();
+  const pathname = usePathname();
   const [isChecking, setIsChecking] = useState(true);
   const allowedRolesKey = allowedRoles?.join("|") ?? "";
 
   useEffect(() => {
-    let isMounted = true;
+    const role = getUserRole();
 
-    const checkAuth = () => {
-      try {
-        const userIsAuth = isAuthenticated();
-        const role = getUserRole();
-
-        if (requireAuth && !userIsAuth) {
-          router.replace(CONFIG.ROUTES.LOGIN);
-          return;
-        }
-
-        if (!requireAuth && userIsAuth) {
-          router.replace(role === "admin" ? "/admin" : CONFIG.ROUTES.DASHBOARD);
-          return;
-        }
-
-        const roles = allowedRolesKey ? allowedRolesKey.split("|") : [];
-
-        if (requireAuth && roles.length > 0 && !roles.includes(role || "")) {
-          router.replace(role === "admin" ? "/admin" : CONFIG.ROUTES.DASHBOARD);
-          return;
-        }
-
-        if (isMounted) {
-          setIsChecking(false);
-        }
-      } catch (error) {
-        console.error("Auth check failed:", error);
-
-        if (isMounted) {
-          setIsChecking(false);
-        }
+    if (!requireAuth) {
+      if (role) {
+        router.replace(role === "admin" ? "/admin" : CONFIG.ROUTES.DASHBOARD);
+        return;
       }
-    };
 
-    checkAuth();
+      setIsChecking(false);
+      return;
+    }
 
-    return () => {
-      isMounted = false;
-    };
-  }, [requireAuth, allowedRolesKey, router]);
+    if (!role) {
+      clearTokens();
+      router.replace(CONFIG.ROUTES.LOGIN);
+      return;
+    }
+
+    const roles = allowedRolesKey ? allowedRolesKey.split("|") : [];
+
+    if (roles.length > 0 && !roles.includes(role)) {
+      const destination = role === "admin" ? "/admin" : CONFIG.ROUTES.DASHBOARD;
+
+      if (pathname !== destination) {
+        router.replace(destination);
+        return;
+      }
+
+      clearTokens();
+      router.replace(CONFIG.ROUTES.LOGIN);
+      return;
+    }
+
+    setIsChecking(false);
+  }, [requireAuth, allowedRolesKey, pathname, router]);
 
   return { isChecking };
 }

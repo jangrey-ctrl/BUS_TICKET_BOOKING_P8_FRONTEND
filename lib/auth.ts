@@ -1,3 +1,4 @@
+
 import { CONFIG } from "./config";
 
 interface TokenPayload {
@@ -25,7 +26,14 @@ export const getUserRole = (): string | null => {
   if (!token) return null;
 
   try {
-    const payload = JSON.parse(atob(token.split(".")[1])) as TokenPayload;
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const paddedBase64 = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    const binary = atob(paddedBase64);
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    const payload = JSON.parse(new TextDecoder().decode(bytes)) as TokenPayload;
 
     if (payload.exp && payload.exp * 1000 < Date.now()) {
       return null;
@@ -61,5 +69,5 @@ export const clearTokens = (): void => {
 };
 
 export const isAuthenticated = (): boolean => {
-  return !!getAccessToken();
+  return getUserRole() !== null;
 };

@@ -1,8 +1,9 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { apiClient } from "@/lib/api";
 import {
   Card,
   CardContent,
@@ -28,12 +29,45 @@ import {
   Bell,
 } from "lucide-react";
 
+interface BusData {
+  bus_id: number;
+  bus_code: string;
+  bus_number: string;
+  bus_type: string;
+  bus_capacity: number;
+}
+
 export default function DashboardPage() {
-const { isChecking } = useAuthGuard({
-  requireAuth: true,
-  allowedRoles: ["user"],
-});
+  const { isChecking } = useAuthGuard({
+    requireAuth: true,
+    allowedRoles: ["user"],
+  });
+
   const [showNotifications, setShowNotifications] = useState(false);
+  const [totalBuses, setTotalBuses] = useState(0);
+  const [isLoadingBuses, setIsLoadingBuses] = useState(true);
+  const [busError, setBusError] = useState("");
+
+  useEffect(() => {
+    const fetchBuses = async () => {
+      try {
+        const data = await apiClient<BusData[]>("/bus", {
+          method: "GET",
+          requiresAuth: true,
+        });
+
+        setTotalBuses(data.length);
+        setBusError("");
+      } catch (error) {
+        console.error("Failed to fetch buses:", error);
+        setBusError("Unable to load buses.");
+      } finally {
+        setIsLoadingBuses(false);
+      }
+    };
+
+    fetchBuses();
+  }, []);
 
   if (isChecking) {
     return (
@@ -78,13 +112,10 @@ const { isChecking } = useAuthGuard({
                   aria-label="Notifications"
                   title="Notifications"
                   aria-expanded={showNotifications}
-                  onClick={() =>
-                    setShowNotifications(!showNotifications)
-                  }
+                  onClick={() => setShowNotifications(!showNotifications)}
                   className="relative size-10 shrink-0 rounded-xl border-[#D9E2D9] bg-white text-[#174D3A] shadow-sm hover:bg-[#E8F0E9] hover:text-[#174D3A]"
                 >
                   <Bell className="size-5" />
-
                   <span className="absolute right-2 top-2 size-2 rounded-full bg-[#4C8479] ring-2 ring-white" />
                 </Button>
 
@@ -105,10 +136,7 @@ const { isChecking } = useAuthGuard({
                     </div>
 
                     <div className="px-4 py-8 text-center">
-                      <Bell
-                        size={28}
-                        className="mx-auto mb-2 text-[#AFC8BB]"
-                      />
+                      <Bell size={28} className="mx-auto mb-2 text-[#AFC8BB]" />
 
                       <p className="text-sm font-medium text-[#174D3A]">
                         No notifications yet
@@ -135,11 +163,11 @@ const { isChecking } = useAuthGuard({
                     </p>
 
                     <h2 className="text-2xl font-bold text-[#174D3A]">
-                      0
+                      {isLoadingBuses ? "..." : busError ? "--" : totalBuses}
                     </h2>
 
                     <p className="text-[11px] text-[#64746B]">
-                      Available buses
+                      {busError || "Registered buses"}
                     </p>
                   </div>
 
@@ -219,10 +247,7 @@ const { isChecking } = useAuthGuard({
                     </div>
 
                     <div className="space-y-1">
-                      <Badge
-                        variant="outline"
-                        className="border-green-200 bg-green-50 text-green-700 hover:bg-green-50"
-                      >
+                      <Badge variant="outline" className="border-green-200 bg-green-50 text-green-700 hover:bg-green-50">
                         Confirmed
                       </Badge>
 
@@ -241,10 +266,7 @@ const { isChecking } = useAuthGuard({
                     </div>
 
                     <div className="space-y-1">
-                      <Badge
-                        variant="outline"
-                        className="border-yellow-200 bg-yellow-50 text-yellow-700 hover:bg-yellow-50"
-                      >
+                      <Badge variant="outline" className="border-yellow-200 bg-yellow-50 text-yellow-700 hover:bg-yellow-50">
                         Pending
                       </Badge>
 
@@ -263,10 +285,7 @@ const { isChecking } = useAuthGuard({
                     </div>
 
                     <div className="space-y-1">
-                      <Badge
-                        variant="outline"
-                        className="border-red-200 bg-red-50 text-red-700 hover:bg-red-50"
-                      >
+                      <Badge variant="outline" className="border-red-200 bg-red-50 text-red-700 hover:bg-red-50">
                         Cancelled
                       </Badge>
 
@@ -304,30 +323,16 @@ const { isChecking } = useAuthGuard({
                     <table className="w-full text-left text-xs">
                       <thead>
                         <tr className="border-b border-[#D9E2D9] text-[#64746B]">
-                          <th className="px-3 py-3 font-medium">
-                            Booking Code
-                          </th>
-
-                          <th className="px-3 py-3 font-medium">
-                            Route
-                          </th>
-
-                          <th className="px-3 py-3 font-medium">
-                            Travel Date
-                          </th>
-
-                          <th className="px-3 py-3 font-medium">
-                            Status
-                          </th>
+                          <th className="px-3 py-3 font-medium">Booking Code</th>
+                          <th className="px-3 py-3 font-medium">Route</th>
+                          <th className="px-3 py-3 font-medium">Travel Date</th>
+                          <th className="px-3 py-3 font-medium">Status</th>
                         </tr>
                       </thead>
 
                       <tbody>
                         <tr>
-                          <td
-                            colSpan={4}
-                            className="px-3 py-10 text-center text-[#64746B]"
-                          >
+                          <td colSpan={4} className="px-3 py-10 text-center text-[#64746B]">
                             No bookings available yet.
                           </td>
                         </tr>
@@ -366,34 +371,17 @@ const { isChecking } = useAuthGuard({
                     <table className="w-full text-left text-xs">
                       <thead>
                         <tr className="border-b border-[#D9E2D9] text-[#64746B]">
-                          <th className="px-3 py-3 font-medium">
-                            Bus Number
-                          </th>
-
-                          <th className="px-3 py-3 font-medium">
-                            Route
-                          </th>
-
-                          <th className="px-3 py-3 font-medium">
-                            Departure
-                          </th>
-
-                          <th className="px-3 py-3 font-medium">
-                            Arrival
-                          </th>
-
-                          <th className="px-3 py-3 font-medium">
-                            Fare
-                          </th>
+                          <th className="px-3 py-3 font-medium">Bus Number</th>
+                          <th className="px-3 py-3 font-medium">Route</th>
+                          <th className="px-3 py-3 font-medium">Departure</th>
+                          <th className="px-3 py-3 font-medium">Arrival</th>
+                          <th className="px-3 py-3 font-medium">Fare</th>
                         </tr>
                       </thead>
 
                       <tbody>
                         <tr>
-                          <td
-                            colSpan={5}
-                            className="px-3 py-10 text-center text-[#64746B]"
-                          >
+                          <td colSpan={5} className="px-3 py-10 text-center text-[#64746B]">
                             No upcoming schedules available.
                           </td>
                         </tr>
